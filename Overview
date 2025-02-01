@@ -1,1 +1,369 @@
+Cyber Lab:
+
+Using draw.io we made the following chart for our home lab:
+
+
+
+
+Username on Ubuntu: joshsplunk
+
+
+To speed up timeI have ensured to push updates and install the following software in Virtual Oracle Box:
+
+
+
+I currently have 32 GB of RAM and am using a 14th gen processor for this setup. The following Base Memory and Processors have been given to the following VMs:
+
+Kali Linux:
+
+Windows10:
+
+ADDC01:
+
+Splunk: Beef up RAM for logging…etc
+
+
+
+Now that we have our Operating Systems installed for this lab, we need to configure the network according to the diagram we created. As such we navigate to the Tools tab in the top left and we will see Host-Only Networks, NAT Networks and Cloud Networks.
+
+
+
+Within the NAT network tab, I set our IPv4 Prefix to 192.168.10.0/24:
+
+
+
+
+
+Now we head over to our servers and host and modify the settings and apply out NAT Network configuration setting:
+
+
+
+Now we rinse and repeat for all other hosts including Linux, Windows 10, Windows Server 2022.
+
+Now that we have this configured we want to ensure Splunk has a static IP address:
+
+After logging into the machine we see 192.168.10.4 has been assigned to us:
+
+
+
+Once logged in I entered sudo nano /etc/netplan/50-cloud-init.yaml and got to the following page:
+
+
+
+We are now going to edit this and change our dhcp4 value from true to no and add a few additional parameters.
+
+
+
+I actuall
+y noticed I made an indentation error and fixed it with the following:
+
+
+
+
+
+Now we can see our IP address is 192.168.10.10:
+
+
+
+
+Now we push splunk into our ubuntu server:
+
+
+
+Share the file path:
+
+
+
+Adding our user joshsplunk:
+
+
+
+
+
+We have mounted our share locally
+
+
+
+
+
+Now, we run sudo dpkg -i splunk-9.4.0…….
+
+
+
+SPLUNK HAS BEEN INSTALLED!!!!
+
+After installing Splunk we want it to auto run when we start our server, as such we run the following command:
+
+Translation: sudo ./splunk enable boot-start -user splunk
+	Purpose: Anytime our VM reboots Splunk with run with the user Splunk
+
+
+
+
+Let’s begin working on our Windows 10 machine:
+
+Objectives: Install Splunk Universal Forwarder and Sysmon on both our windows10 (target-pc) and WindowsServer2022 (ADDC01):
+
+Referencing our Diagram we wanted our target-pc to have the IP 192.168.10.100: 
+
+Looking at our current configuration we are given the IP 192.168.10.5:
+
+
+
+Going into our Network Adapter Settings we change the following:
+
+
+Confirmed our changes worked:
+
+
+
+
+Just for testing we can see our Splunk server by navigating to 192.168.10.1ping0:8000 (splunk listens to 8000)
+
+
+
+
+
+Now we navigate to Splunk’s official page and download the universal forwarder and set it to an on-premises instance:
+
+
+
+
+
+Now we create credentials for our administrator account:
+
+
+
+
+
+Username: paarthurnax
+Password: Ravens123!
+
+Setup our receiving indexer:
+
+
+
+Once we hit next we have finished our forwarding setup.
+
+Now we will navigate to Microsoft main website which to download Sysmon.
+
+
+
+Additionally, we want to navigate to olaf hartong’s github page to copy the sysmonconfig.xml file:
+
+
+
+
+After downloading both files we then extract our zip file from Microsoft into our downloads folder. Please note, I also installed thesysmonconfig.xml from github into my downloads folder as well.
+
+After we extracted the files, I opened up PowerShell as an administrator and ran the following command:
+
+
+
+The following popup will appear for System Monitor:
+
+
+
+
+After installing Sysmon I went into my SplunkUniversalForwarder filepath and proceeded to create the following inputs.conf file to push what data I want to send over to our server:
+
+
+
+
+
+This configuration file is set to push all Application, Security, Operational and sysmon logs. Note, we are pointing our index to “endpoint” to ensure the category lines up to our splunk server which will have the index “endpoint” configured later in this lab.
+
+
+
+
+
+Note, anytime we update our config file we need to restart our SplunkForwarder service as well as check our SplunkForwarder properties:
+
+I decided to change the account to Log on as Local System account:
+
+
+
+
+Once we click okay we can now restart our service:
+
+
+
+
+Now we log back into our spluk portal and we proceed to create a new index which was “endpoint” in our config file:
+
+
+
+Once you add the Index “endpoint” you will see it with the other indexes:
+
+
+
+Now we want to ensure we are receiving this data, so we navigate to Forwarding and Receiving:
+
+
+
+We click on Configure receiving, and then navigate to “New Receiving Port”:
+
+
+
+Going back to when we setup our Universal Forwarding on our host it was configured over port 9997:
+
+
+
+Once we hit save and go into our Search & Reporting page we can search for our new index with the query: index=endpoint 
+
+
+
+You can see that we are successfully receiving logs from our host
+
+To install this onto our ADDC01 we repeat the same steps using sysmon and universal forwarder.
+
+
+Next phase:
+
+
+Now we move to installing and configuring our Windows Service with Active Directory and Promote it to a Domain Controller and join our Target machine to our newly created domain:
+
+Now we need to set our Server to have the static IP 192.160.10.7. Currently, we are observing the IP 192.168.10.6:
+
+
+
+Now we go into our adapter settings and make the following changes:
+
+
+
+
+We check again and now we have been assigned 192.168.10.7:
+
+
+
+
+Now we click on our Server Manager -> Dashboard -> Add Roles and Features Wizard -> Installation Type (Role based) -> Server Selection (ADDC01) -> Server Roles (Active Directory Domain Services) -> 
+
+
+
+Once we have installed ADDS we will see the following notification:
+
+
+
+I decided to give my environment the domain name cyberlab.local:
+
+
+
+Now we click on install and after a reboot we are presented with our domain indicating we have successfully installed ADDS and promoted ADDC01 to a Domain Controller:
+
+
+
+Once logged in we navigate back to our Server Manager dashboard and proceed to configure our users. We navigate to the Tools tab in the top right and click on Active Directory Users and Computers and we will be presented with this page:
+
+
+
+I am going to create two separate organizational units which are IT & HR to group our users. 
+
+By right clicking on cyberlab.local -> New -> Organizational Unit we can create our departments:
+
+
+
+
+Once our IT Organizational Unit is created we proceed to right click the folder IT -> New -> User
+
+
+
+I am a huge fan of Skyrim so decided to make our user known as Dovahkiin who is known as the Dragonborn:
+
+
+
+For documentation purposes the password is P@ssword123! and this will be used later on for our brute force attacks.
+
+Now we rinse and repeat for our HR department and create the user Jarl Balgruuf who is the Jarl of Whiterun in Skyrim who happens to be in the HR department:
+
+
+
+
+
+Now that our users are created we are going to join our Window 10 host (target-pc) to our domain and login as Dovahkiin.
+
+While on our target-pc machine we want to change our DNS now to point to our DC by going to our Internet Protocol Version 4 Properties and changing the Preferred DNS server to 192.168.10.7:
+
+
+
+Running a quick ipconfig /all command we can see that we are now configured to 192.168.10.7 (ADDC01):
+
+
+
+Now that our DNS server is reconfigured we can navigate to System Properties -> Advanced -> Change and input our computer as a member of the cyberlab.local domain.
+
+
+
+
+After clicking okay and entering in credentials for an account approved to join computers to the domain we will see the following message:
+
+
+
+To test that we officially joined our domain lets sign in as Dovahkiin (ddragonborn):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+After typing in our password we see that we have successfully signed in:
+
+
+
+Considering we have setup ADDS and joined our target to the domain, it is time for us to use Kali and perform 
+
+Objective:
+
+Utilize Kali Linux to perform brute force attacks on our users and view telemetry via Splunk along with installing Atomic Red Team to run and detect similar machines in the future.
+
+According to our documentation, our Kali machine will have the IP 192.168.10.250 so we change it by right clicking the ethernet logo and navigating to our config and IPv4 Settings:
+
+
+
+Now we connect to Wired Connection 1 and run ip a in our terminal and see we are connected with 192.168.10.250:
+
+
+
+
+Note: In this scenario we are going to assume that devices on this network are allowed to ping one another. Additionally, they have allowed users to remote into this device locally within the network:
+
+To allow users to remotely connect to local machines once authenticated to the network/domain you navigate to advanced system properties -> Remote -> Add and proceed to add your users (ddragonborn & jbalgruff)
+
+
+
+
+
+I proceeded to update Kali and downloaded crowbar onto my machine and then unzipped rockyou.txt file. Once copied, I moved it into the folder ad-project. After copying it over I proceeded to make a duplicate called passwords.txt and we can see in the screenshot below that I have successfully copied it over:
+
+
+
+To ensure our password list would work, I ran the command nano passwords.txt and added P@ssword123! which we know belongs to our user.
+
+
+
+Now we are ready to attack our Target-PC at 192.168.10.100 with the following command:
+
+crowbar -b rdp -u ddragonborn -C passwords.txt -s 192.168.10.100/32
+
+
+
+
+Looking back into our logs in splunk we can see the following:
+
+
+
 
